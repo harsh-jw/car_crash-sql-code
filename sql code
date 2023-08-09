@@ -1,0 +1,135 @@
+create database crashes;
+
+use crashes;
+
+drop table if exists crashes;
+create table crashes (
+	crash_id int primary key,
+    crash_date TEXT,
+    posted_speed_limit varchar(255),
+    traffic_control_device varchar(255),
+    device_condition varchar(255),
+    weather_condition varchar(255),
+    lighting_condition varchar(255),
+    first_crash_type varchar(255),
+    traffic_way_type varchar(255),
+    lane_count varchar(255),
+    alignment varchar(255),
+    roadway_surface_condition varchar(255),
+    road_defect varchar(255),
+    report_type varchar(255),
+    crash_type varchar(255),
+    hit_and_run varchar(255),
+    damage varchar(255),
+    date_police_notified TEXT, 
+    primary_cause varchar(255),
+    secondary_cause varchar(255),
+    street_direction varchar(255),
+    street_name varchar(255),
+    statement_taken varchar(255),
+    work_zone varchar(255),
+    work_zone_type varchar(255),
+    workers_present varchar(255),
+    number_unit varchar(255),
+    most_severe_injury varchar(255),
+    injuries_total varchar(255),
+    injuries_fatal varchar(255),
+    injuries_incapacitated varchar(255),
+    injuries_non_incapacitated varchar(255),
+    injuries_reported_not_evident varchar(255),
+    crash_hour varchar(255),
+    crash_day_of_week varchar(255),
+    crash_month varchar(255)
+);
+    
+load data infile 'C:\\ProgramData\\MySQL\\MySQL Server 8.1\\Uploads\\combinedcrashes.csv'
+into table crashes
+fields terminated by ','
+enclosed by '"'
+lines terminated by '\n'
+ignore 1 rows;
+
+USE crashes;
+
+SELECT * FROM crashes;
+
+DESCRIBE crashes;
+
+SET sql_safe_updates = 0;
+
+UPDATE crashes
+SET crash_date = CASE
+					 WHEN crash_date REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4} [0-9]{1,2}:[0-9]{1,2}$'
+				THEN DATE_FORMAT(STR_TO_DATE(crash_date, '%m/%d/%Y %H:%i'), '%Y-%m-%d')
+					 WHEN crash_date REGEXP '^[0-9]{1,2}-[0-9]{1,2}-[0-9]{4} [0-9]{1,2}:[0-9]{1,2}$'
+				THEN DATE_FORMAT(STR_TO_DATE(crash_date, '%m-%d-%Y %H:%i'), '%Y-%m-%d')
+                     ELSE DATE_FORMAT(STR_TO_DATE(crash_date, '%Y-%m-%d'), '%Y-%m-%d')
+END;
+                
+ALTER TABLE crashes
+MODIFY COLUMN crash_date DATE;
+
+UPDATE crashes
+SET date_police_notified = CASE
+							   WHEN date_police_notified REGEXP '^[0-9]{1,2}/[0-9]{1,2}/[0-9]{4}[0-9]{1,2}:[0-9]{1,2}$' 
+							THEN DATE_FORMAT(STR_TO_DATE(date_police_notified, '%m/%d/%Y %H:%i'), '%Y-%m-%d')
+							   WHEN date_police_notified REGEXP '^[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}[0-9]{1,2}:[0-9]{1,2}$' 
+							THEN DATE_FORMAT(STR_TO_DATE(date_police_notified, '%m-%d-%Y %H:%i'), '%Y-%m-%d')
+							   ELSE DATE_FORMAT(STR_TO_DATE(date_police_notified, '%Y-%m-%d'), '%Y-%m-%d')
+END;
+
+ALTER TABLE crashes
+MODIFY COLUMN date_police_notified DATE;
+
+-- what are the total counts of recorded crashes in the dataset?
+
+SELECT COUNT(*) As total_count
+FROM crashes;
+
+-- what is the earlist and latest date of recorded crashes?
+
+SELECT MIN(crash_date) AS min, MAX(crash_date) AS max
+FROM crashes;
+
+-- What is the number of crashes reported per year?
+SELECT YEAR(crash_date), COUNT(*)
+FROM crashes
+GROUP BY YEAR(crash_date)
+ORDER BY YEAR(crash_date);
+--
+SELECT MONTHNAME(crash_date) AS crash_month,
+	   SUM(YEAR(crash_date) = 2017) AS count_2017,
+	   SUM(YEAR(crash_date) = 2018) AS count_2018,
+	   (SUM(YEAR(crash_date) = 2018) - SUM(YEAR(crash_date) = 2017)) AS count_diff,
+	   CASE
+			WHEN SUM(YEAR(crash_date) = 2017) > 0
+		THEN ((SUM(YEAR(crash_date) = 2018) - SUM(YEAR(crash_date) = 2017)) / SUM(YEAR(crash_date) = 2017)) * 100
+			ELSE 0
+		END AS percent_change
+FROM crashes
+WHERE YEAR(crash_date) IN (2017, 2018)
+GROUP BY MONTHNAME(crash_date)
+ORDER BY MONTHNAME(crash_date);
+
+DROP TABLE IF EXISTS crash_new;
+
+CREATE TABLE crash_new AS
+(
+	SELECT * FROM crashes
+    WHERE YEAR(crash_date) BETWEEN '2018' AND '2022'
+);
+
+SELECT * FROM crash_new;
+
+SELECT COUNT(*) As total_count
+FROM crash_new;
+
+SELECT MIN(crash_date) AS min, MAX(crash_date) AS max
+FROM crash_new;
+
+TABLE crash_new
+INTO OUTFILE 'C:\\ProgramData\\MySQL\\MySQL Server 8.1\\Uploads\\crash_new.csv'
+FIELDS TERMINATED BY ','
+OPTIONALLY ENCLOSED BY '"'
+ESCAPED BY ''
+LINES terminated by '\n'
